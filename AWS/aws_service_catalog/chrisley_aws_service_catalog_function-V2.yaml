@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Provision EC2 Rhel Server"
+Parameters:
+  KeyName :
+    Description: "Name of an existing EC2 KeyPair"
+    Type:  "AWS::EC2::KeyPair::KeyName"
+    ConstraintDescription: "Must be the name of an existing EC2 KeyPair."
+  InstanceName:
+    Description: "Name of the instance"
+    Type: String
+  Count:
+    Description: "Number of VMs to create"
+    Type: String
+    Default: 1
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    ConstraintDescription: "Enter the number of VMs to populate 1, 2, 3, 4, or 5. Default is 1."
+  Subnet:
+    Type: AWS::EC2::Subnet::Id
+  InstanceType:
+    Description: "Amazon EC2 instance type"
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large
+    ConstraintDescription: "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+
+Resources:
+  LambdaRemotePipeline:
+    Type: Custom::LambdaRemotePipeline
+    Properties:
+      ServiceToken:
+        Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:call-remote-pipeline
+      GlobalVariables:
+        instancename:
+          Ref: InstanceName
+      TerraformVariables:
+        subnet:
+          Ref: Subnet
+        instancetype:
+          Ref: InstanceType
+        keyname:
+          Ref: KeyName
+        count:
+          Ref: Count
+        instancename:
+          Ref: InstanceName

@@ -1,0 +1,8 @@
+terraform {
+  backend "s3" {
+    bucket = "s3-terraform-state-file1"
+    dynamodb_table = "s3-terraform-state-lock-table"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
+}

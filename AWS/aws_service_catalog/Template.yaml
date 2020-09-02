@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Test Interface
+Parameters:
+  Hostname:
+    Type: String
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+  Subnet:
+    Type: AWS::EC2::Subnet::Id
+  VMType:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large
+    ConstraintDescription: "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+  DesiredPackage:
+    Type: CommaDelimitedList
+    Default: httpd
+
+    
+Resources:
+  MyAWX:
+    Type: Custom::MyAWX
+    Properties:
+      ServiceToken:
+        Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:LambdaCallRemoteAPIPython
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/TestRoleServiceCatalog'
+      GlobalVariables:
+        hostname:
+          Ref: Hostname
+      TerraformVariables:
+        subnet:
+          Ref: Subnet
+        vmtype:
+          Ref: VMType
+      AnsibleVariables:
+        desiredpackages:
+          Ref: DesiredPackage

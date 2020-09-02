@@ -1,0 +1,87 @@
+image:
+  name: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
+  entrypoint:
+    - '/usr/bin/env'
+    - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+variables:
+  PLAN: plan.tfplan
+  JSON_PLAN_FILE: tfplan.json
+
+cache:
+  paths:
+    - terraform/.terraform
+
+before_script:
+  - alias convert_report="jq -r '([.resource_changes[]?.change.actions?]|flatten)|{\"create\":(map(select(.==\"create\"))|length),\"update\":(map(select(.==\"update\"))|length),\"delete\":(map(select(.==\"delete\"))|length)}'"
+  - cd terraform
+  - terraform --version
+  - terraform init
+
+stages:
+  - validate
+  - build
+  - deploy
+#  - configure
+
+validate:
+  stage: validate
+  tags:
+    - ibm
+    - aws
+    - azure
+    - gts
+  script:
+    - terraform validate
+  allow_failure: false
+
+plan:
+  stage: build
+  tags:
+    - ibm
+    - aws
+    - azure
+    - gts
+
+  script:
+    - terraform plan -out=$PLAN
+    - "terraform show --json $PLAN | convert_report > $JSON_PLAN_FILE"
+  artifacts:
+    paths:
+      - terraform/$PLAN
+    reports:
+      terraform: terraform/$JSON_PLAN_FILE
+  allow_failure: false
+
+apply:
+  stage: deploy
+  tags:
+    - ibm
+    - aws
+    - azure
+    - gts
+  script:
+    - terraform apply -input=false $PLAN
+    - sleep 20
+  dependencies:
+    - plan
+  only:
+    - master
+  allow_failure: false
+
+#apache:
+#  stage: configure
+#  tags:
+#    - ibm
+#    - aws
+#    - azure
+#    - gts
+#  script:
+#    - apk add curl && ls
+#    - terraform state pull
+#    - EC2_PUB_ADDR=$(terraform output EC2_PUB_ADDR) && EC2_HOSTNAME=$(terraform output EC2_HOSTNAME)
+#    - >
+#       curl --request POST -H "Content-Type: application/json" --user admin:password -d '{ "extra_vars": {"target": "'$EC2_PUB_ADDR'"}}' http://196.61.239.51/api/v2/workflow_job_templates/19/launch/
+#    - >
+#       echo "ec2 instance hostname: $EC2_HOSTNAME"
+#  allow_failure: false
